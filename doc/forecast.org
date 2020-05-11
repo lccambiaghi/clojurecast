@@ -1,0 +1,75 @@
+* Setup
+#+BEGIN_SRC clojure
+(ns clojurecast.core.forecast
+  (:require [clojisr.v1.r :refer [r r+ ->code r->clj clj->r discard-all-sessions]]
+            [clojisr.v1.require :refer [require-r]]
+            [clojisr.v1.applications.plotting :refer [plot->file]]
+            [tech.ml.dataset :as ds]))
+
+(require-r '[fable]
+           '[tsibble]
+           '[fabletools]
+           '[dplyr])
+#+END_SRC
+
+#+RESULTS:
+: Please reevaluate when nREPL is connected
+
+#+begin_src clojure
+(discard-all-sessions)
+#+end_src
+
+#+RESULTS:
+: class clojure.lang.Compiler$CompilerException
+
+* Fitting a model
+#+begin_src clojure
+(def ets-model
+  (-> r.tsibble/tourism
+      (r.dplyr/summarise '(= Trips (sum Trips)))
+      (r.fabletools/model (r.fable/ETS))
+      ))
+#+end_src
+
+#+RESULTS:
+: #'clojurecast.core.forecast/ets-model
+
+#+begin_src clojure
+(-> ets-model
+    r.fabletools/report
+    )
+#+end_src
+
+#+RESULTS:
+: # A mable: 1 x 1
+:   `.MEM$x3c7f09e5e3654880`
+:   <model>
+: 1 <ETS(A,A,A)>
+
+* Producing a forecast
+#+begin_src clojure
+(def fcst
+  (-> ets-model
+      (r.fabletools/forecast :h "2 years")
+      ))
+#+end_src
+
+#+RESULTS:
+: #'clojurecast.core.forecast/fcst
+
+* Plot
+#+BEGIN_SRC clojure :results graphics file link :file ../resources/tmp.png
+(require-r '[tsibbledata]
+           '[ggplot2])
+
+(def target-path "/Users/luca/git/clojurecast/resources/tmp.png")
+
+(->> fcst
+     r.fabletools/autoplot
+     (plot->file target-path))
+#+end_src
+
+#+RESULTS:
+[[file:../resources/tmp.png]]
+
+#+html: <p align="center"><img src="../resources/tmp.png" /></p>
