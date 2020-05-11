@@ -1,0 +1,50 @@
+* Preamble
+The ambition of this project is to be consistent with the interfaces designed in ~panthera~ and in ~tech.ml.dataset~.
+Since ~clojisr~ relies on the latter to perform the conversion in the r->clj direction, the API will adhere to ~tech.ml.dataset~.
+Although the pandas API is mature and battle tested, requiring interop with both R and python would add extra complexity.
+* tech.ml.dataset
+** Dataset
+A dataset is a map of column name to column data. Column data is typed and can be primitive, datetime or objects(?). Datetimes are converted to integers.
+
+Dataset are logically maps when treated like functions and sequences of columns when treated like sequences, as shown in this example:
+#+BEGIN_SRC clojure
+user> (def new-ds (ds/->dataset [{:a 1 :b 2} {:a 2 :c 3}]))
+#'user/new-ds
+user> (first new-ds)
+#tech.ml.dataset.column<int16>[2]
+:a
+[1, 2, ]
+user> (new-ds :c)
+#tech.ml.dataset.column<int16>[2]
+:c
+[-32768, 3, ]
+#+END_SRC
+
+In the following example a datetime parser is passed when reading in a ~.csv~ file:
+#+BEGIN_SRC clojure
+(def data (ds/select (ds/->dataset "test/data/file_example_XLSX_1000.xlsx"
+                                         {:parser-fn {"Date" [:local-date "dd/MM/yyyy"]}})
+                           :all (range 5)))
+#+END_SRC
+
+** Datetime
+- Support for datetime dtype: https://github.com/techascent/tech.datatype/blob/master/docs/datetime.md
+
+* Panthera
+** Time series
+In ~panthera~ a series is a vector (its values), optionally it can have a name and an index. The values of a series have the canonical pandas dtype. In the specific case of a time series its values are numeric and the index is often composed of timestamps.
+
+** Dataframes
+A dataframe is a vector of maps, optionally having column names and an index. In the following example each map represent an observation, with keywords representing column names:
+#+begin_src clojure
+(pt/data-frame [{:a 1 :b 2} {:a 3 :b 4}])
+#+end_src
+
+In the next example, keywords still indicate column/series names and each series represent a column of the dataframe:
+#+BEGIN_SRC clojure
+(pt/data-frame {:a (pt/series [1 2 3]) :b (pt/series [:x :y :z])})
+#+END_SRC
+* Further resources
+- ~tech.ml.dataset~ walkthrough: https://github.com/techascent/tech.ml.dataset/blob/master/docs/columns-readers-and-datatypes.md
+- ~panthera~ basic concepts: https://github.com/alanmarazzi/panthera/blob/master/examples/basic-concepts.ipynb
+- summary of ~tech.ml.dataset~ functions: https://github.com/genmeblog/techtest/wiki/Summary-of-functions
