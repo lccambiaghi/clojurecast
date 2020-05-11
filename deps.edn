@@ -1,0 +1,4 @@
+{:aliases {:dev {:extra-deps {
+                              scicloj/clojisr {:mvn/version "1.0.0-BETA10"}
+                              ;; techascent/tech.ml.dataset {:mvn/version "1.70"}
+                              }}}}

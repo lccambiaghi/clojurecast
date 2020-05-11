@@ -1,0 +1,56 @@
+* Setup R environment
+** Restore dependencies
+Install ~packrat~:
+#+BEGIN_SRC R
+install.packages("packrat")
+#+END_SRC
+
+Install locked dependencies:
+#+BEGIN_SRC R
+packrat::restore()
+#+END_SRC
+
+** Install Rserve
+We need to fetch latest ~Rserve~ version and compile it from source:
+#+BEGIN_SRC R
+install.packages("Rserve",,"http://rforge.net", type="source")
+#+END_SRC
+
+This is my ~/.R/Makevars~:
+#+BEGIN_SRC sh
+CFLAGS=-isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+CCFLAGS=-isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+CXXFLAGS=-isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+#+END_SRC
+
+** (for developers) Installing libraries
+Tell packrat to ignore Rserve:
+#+BEGIN_SRC R
+packrat::set_opts(ignored.packages="Rserve")
+#+END_SRC
+
+Install packages:
+#+BEGIN_SRC R
+install.packages("package-name")
+#+END_SRC
+
+Lock dependencies:
+#+BEGIN_SRC R
+packrat::snapshot()
+#+END_SRC
+
+* Install and link openssl
+Install openssl:
+#+BEGIN_SRC sh
+brew install openssl
+#+END_SRC
+
+Identify where it is installed:
+#+BEGIN_SRC sh
+brew info openssl
+#+END_SRC
+
+Export in your env the path (e.g. in =~/.zshenv=):
+#+BEGIN_SRC sh
+export LIBRARY_PATH=/usr/local/Cellar/openssl@1.1/1.1.1d/lib
+#+END_SRC

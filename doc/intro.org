@@ -1,0 +1,52 @@
+* Require
+#+BEGIN_SRC clojure
+(require '[clojisr.v1.r :refer [r ->code r->clj clj->r]])
+(require '[clojisr.v1.require :refer [require-r]])
+(require '[tech.ml.dataset :as ds])
+#+END_SRC
+
+* Import R libraries
+#+BEGIN_SRC clojure
+(require-r '[fable]
+           '[tsibble]
+           '[fabletools]
+           '[dplyr])
+#+END_SRC
+* Convert R code in Clojure
+#+BEGIN_SRC clojure
+(->> (r "tsibble::tourism %>%
+  filter(Region == \"Melbourne\") %>%
+  model(
+    ets = ETS(Trips ~ trend(\"A\")),
+    arima = ARIMA(Trips)
+  )"))
+
+(-> r.tsibble/tourism
+    (r.dplyr/filter '(== Region "Melbourne"))
+    (r.fabletools/model (r.fable/ETS '(formula Trips (trend "A")))
+                        (r.fable/ARIMA '(formula nil Trips)))
+    )
+#+END_SRC
+* Bring R data in Clojure
+#+BEGIN_SRC clojure
+(defonce tourism-ds
+  (-> r.tsibble/tourism
+      (r.dplyr/filter '(== Region "Melbourne"))
+      r->clj))
+
+(ds/descriptive-stats tourism-ds)
+#+END_SRC
+
+* Bring Clojure data into R
+#+BEGIN_SRC clojure
+(-> r.tsibble/tourism
+    (r.dplyr/filter '(== Region "Melbourne"))
+    r->clj
+    clj->r
+    (r.tsibble/as-tsibble :index "Quarter" :key '("Region" "State" "Purpose"))
+    )
+#+END_SRC
+
+#+begin_src clojure
+(r.tsibble/tsibble :x [1 2 3 4 5] :y [4 5 2 5 8] :index "x")
+#+end_src
