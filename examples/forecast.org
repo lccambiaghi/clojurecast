@@ -59,17 +59,28 @@
 
 * Plot
 #+BEGIN_SRC clojure :results graphics file link :file ../resources/tmp.png
-(require-r '[tsibbledata]
-           '[ggplot2])
+(def history (-> r.tsibble/tourism
+                 (r.dplyr/summarise '(= Trips (sum Trips)))))
 
 (def target-path "/Users/luca/git/clojurecast/resources/tmp.png")
 
-(->> fcst
-     r.fabletools/autoplot
-     (plot->file target-path))
+;autoplot(tourism_aus, level = 80, alpha = 0.5)
+(->> (r+ (r.fabletools/autoplot history)
+         (r.fabletools/autolayer fcst))
+     (plot->file target-path
+                 ;; :width 800
+                 ;; :height 400
+                 ;; :quality 50
+                 ))
 #+end_src
 
 #+RESULTS:
 [[file:../resources/tmp.png]]
 
 #+html: <p align="center"><img src="../resources/tmp.png" /></p>
+
+* Further resources
+- ~fable~ vignettes: https://github.com/tidyverts/fable/blob/master/vignettes/fable.Rmd
+- ~fabletools~ model function: https://github.com/tidyverts/fabletools/blob/master/R/model.R
+- Chapter 9 of Clojure for Data Science: https://github.com/clojuredatascience/ch9-time-series/blob/master/src/cljds/ch9/examples.clj
+- How to call ~ggplot2~ from Clojure: https://scicloj.github.io/clojisr-examples/doc/clojisr-examples/graph-gallery/histogram/

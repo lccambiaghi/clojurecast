@@ -1,7 +1,3 @@
-* Resources
-- How to call R code from clojure: https://scicloj.github.io/clojisr/doc/clojisr/v1/codegen-test/
-- How to rewrite R code with clojist: https://scicloj.github.io/clojisr/doc/clojisr/v1/titanic0-test/
-- tech.ml.dataset vs. dplyr and data.table: https://github.com/genmeblog/techtest/blob/master/src/techtest/datatable_dplyr.clj
 * Require
 #+BEGIN_SRC clojure
 (require '[clojisr.v1.r :refer [r ->code r->clj clj->r]])
@@ -54,3 +50,8 @@
 #+begin_src clojure
 (r.tsibble/tsibble :x [1 2 3 4 5] :y [4 5 2 5 8] :index "x")
 #+end_src
+
+* Further resources
+- How to call R code from clojure: https://scicloj.github.io/clojisr/doc/clojisr/v1/codegen-test/
+- How to rewrite R code with ~clojisr~: https://scicloj.github.io/clojisr/doc/clojisr/v1/titanic0-test/
+- ~tech.ml.dataset~ vs. ~dplyr~ and ~data.table~: https://github.com/genmeblog/techtest/blob/master/src/techtest/datatable_dplyr.clj

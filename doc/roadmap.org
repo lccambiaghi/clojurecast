@@ -1,0 +1,22 @@
+* Understand and leverage benefits of using Clojure instead of R
+- Study tech.ml suite and pipelines
+- Big datasets with lazy seq?
+- Safe concurrency? Fast parallelization?
+   
+* Data wrangling
+- Load datasets
+- Manipulate data
+  + Cast dtypes
+  + NA values
+  + Filter, groupby
+- Build tsibble, i.e. choose index, key and response
+  + Are dtypes converted correctly?
+  + What about exogenous data?
+
+* Modelling
+- Split in train/val/test
+  + datetime slicing is easy with ~dplyr.filter~
+- Select models
+  + Ensembles
+- Compute cross-validation score
+- Out-of-sample forecast
