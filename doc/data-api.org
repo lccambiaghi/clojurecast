@@ -26,9 +26,12 @@ In the following example a datetime parser is passed when reading in a ~.csv~ fi
                                          {:parser-fn {"Date" [:local-date "dd/MM/yyyy"]}})
                            :all (range 5)))
 #+END_SRC
-
-** Datetime
-- Support for datetime dtype: https://github.com/techascent/tech.datatype/blob/master/docs/datetime.md
+** Datatype
+~tech.ml.dataset~ relies on ~tech.datatype~, another library of the tech suite
+designed for manipulating efficiently sequences of a primitive type. Since this
+library is central to both ~clojisr~ and ~libpython-clj~ it is essential to embrace
+it and undertstand it. It is in this library that the support of datetime dtype
+is being developed.
 
 * Panthera
 ** Time series
@@ -44,7 +47,10 @@ In the next example, keywords still indicate column/series names and each series
 #+BEGIN_SRC clojure
 (pt/data-frame {:a (pt/series [1 2 3]) :b (pt/series [:x :y :z])})
 #+END_SRC
+** Dtypes
+panthera depends on ~libpython-clj~, which itself relies on ~tech.datatype~ in order to map python dtypes to clojure.
 * Further resources
 - ~tech.ml.dataset~ walkthrough: https://github.com/techascent/tech.ml.dataset/blob/master/docs/columns-readers-and-datatypes.md
 - ~panthera~ basic concepts: https://github.com/alanmarazzi/panthera/blob/master/examples/basic-concepts.ipynb
 - summary of ~tech.ml.dataset~ functions: https://github.com/genmeblog/techtest/wiki/Summary-of-functions
+- ~tech.datatype~ documentation of datetime support: https://github.com/techascent/tech.datatype/blob/master/docs/datetime.md

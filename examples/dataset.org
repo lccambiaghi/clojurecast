@@ -1,0 +1,132 @@
+* Require
+#+BEGIN_SRC clojure
+(ns clojurecast.core.forecast
+  (:require [clojure.string :as str]
+            [techtest.api :as dst]
+            [tech.ml.dataset.column :as col]
+            [tech.v2.datatype.functional :as dfn]
+            [tech.v2.datatype :as dtype]
+            [tech.v2.datatype.datetime.operations :as dtype-dt-ops]
+            [tech.ml.dataset :as ds]))
+#+END_SRC
+
+#+RESULTS:
+
+* What is a dataset? What is a column?
+A dataset is a sequence of maps:
+#+BEGIN_SRC clojure
+(defonce data
+  (ds/->dataset [{:a 1 :b 2} {:a 2 :c 3}]))
+
+data
+#+END_SRC
+
+#+RESULTS:
+: _unnamed [2 3]:
+:
+: | :a | :b | :c |
+: |----+----+----|
+: |  1 |  2 |    |
+: |  2 |    |  3 |
+
+A column is a sequence of values of a primitive datatype:
+#+begin_src clojure
+(first data)
+#+end_src
+
+#+RESULTS:
+: #tech.ml.dataset.column<int64>[2]
+: :a
+: [1, 2, ]
+
+#+begin_src clojure
+(-> (data :b)
+    (dtype/get-datatype))
+#+end_src
+
+#+RESULTS:
+: :int64
+
+* Data exploration
+Let's load the data and reshape it in long format:
+#+BEGIN_SRC clojure
+(defonce m5-data
+  (-> (ds/->dataset "resources/sales.csv")
+      (dst/pivot->longer #(str/starts-with? % "d_"){:target-cols "day"
+                                                    :value-column-name "sales"}))
+  )
+#+END_SRC
+
+#+RESULTS:
+: #'clojurecast.core.forecast/m5-data
+
+#+begin_src clojure
+(type m5-data)
+#+end_src
+
+#+RESULTS:
+: tech.ml.dataset.impl.dataset.Dataset
+
+#+begin_src clojure
+(type (first m5-data))
+#+end_src
+
+#+RESULTS:
+: tech.ml.dataset.impl.column.Column
+
+
+#+begin_src clojure
+(dtype/shape m5-data)
+#+end_src
+
+#+RESULTS:
+| 8 | 58327370 |
+
+#+begin_src clojure
+(ds/head m5-data)
+#+end_src
+
+#+RESULTS:
+: resources/sales.csv [5 8]:
+:
+: |                            id |       item_id |   dept_id |  cat_id | store_id | state_id | day | sales |
+: |-------------------------------+---------------+-----------+---------+----------+----------+-----+-------|
+: | HOBBIES_1_001_CA_1_validation | HOBBIES_1_001 | HOBBIES_1 | HOBBIES |     CA_1 |       CA | d_1 |     0 |
+: | HOBBIES_1_002_CA_1_validation | HOBBIES_1_002 | HOBBIES_1 | HOBBIES |     CA_1 |       CA | d_1 |     0 |
+: | HOBBIES_1_003_CA_1_validation | HOBBIES_1_003 | HOBBIES_1 | HOBBIES |     CA_1 |       CA | d_1 |     0 |
+: | HOBBIES_1_004_CA_1_validation | HOBBIES_1_004 | HOBBIES_1 | HOBBIES |     CA_1 |       CA | d_1 |     0 |
+: | HOBBIES_1_005_CA_1_validation | HOBBIES_1_005 | HOBBIES_1 | HOBBIES |     CA_1 |       CA | d_1 |     0 |
+
+
+#+begin_src clojure
+(ds/brief (ds/head 10000 m5-data))
+#+end_src
+
+#+RESULTS:
+| :col-name | cat_id   | :mode      | FOODS                           | :n-missing |     0 | :values | (FOODS HOUSEHOLD HOBBIES)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | :n-values |      3 | :datatype | :string           | :n-valid            |             10000 |          |       |      |       |
+| :col-name | day      | :mode      | d_1                             | :n-missing |     0 | :values | (d_1)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | :n-values |      1 | :datatype | :object           | :n-valid            |             10000 |          |       |      |       |
+| :col-name | dept_id  | :mode      | FOODS_3                         | :n-missing |     0 | :values | (FOODS_3 HOUSEHOLD_1 HOBBIES_1 HOUSEHOLD_2 FOODS_2 FOODS_1 HOBBIES_2)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | :n-values |      7 | :datatype | :string           | :n-valid            |             10000 |          |       |      |       |
+| :col-name | id       | :mode      | HOUSEHOLD_2_260_CA_2_validation | :n-missing |     0 | :values | (HOUSEHOLD_2_260_CA_2_validation FOODS_3_071_CA_3_validation HOUSEHOLD_2_406_CA_3_validation FOODS_3_078_CA_1_validation HOBBIES_1_007_CA_3_validation FOODS_2_107_CA_2_validation FOODS_3_267_CA_1_validation HOUSEHOLD_2_076_CA_2_validation HOUSEHOLD_2_492_CA_2_validation FOODS_3_217_CA_2_validation HOBBIES_1_397_CA_4_validation HOBBIES_1_194_CA_1_validation HOUSEHOLD_2_349_CA_2_validation FOODS_2_181_CA_3_validation HOUSEHOLD_2_487_CA_2_validation FOODS_1_166_CA_2_validation HOBBIES_2_121_CA_1_validation FOODS_3_316_CA_3_validation HOUSEHOLD_1_526_CA_2_validation FOODS_2_393_CA_3_validation HOUSEHOLD_2_369_CA_3_validation) | :n-values |  10000 | :datatype | :string           | :n-valid            |             10000 |          |       |      |       |
+| :col-name | item_id  | :mode      | HOBBIES_1_145                   | :n-missing |     0 | :values | (HOBBIES_1_145 HOUSEHOLD_1_082 HOUSEHOLD_1_220 HOUSEHOLD_1_190 HOBBIES_1_146 HOBBIES_1_157 HOUSEHOLD_1_263 HOUSEHOLD_1_289 HOUSEHOLD_1_183 HOBBIES_2_064 HOBBIES_1_038 HOUSEHOLD_1_144 HOBBIES_1_018 HOBBIES_1_041 HOUSEHOLD_1_096 HOBBIES_1_192 HOBBIES_2_123 HOBBIES_2_057 HOBBIES_1_149 HOUSEHOLD_1_061 HOUSEHOLD_1_233)                                                                                                                                                                                                                                                                                                                           | :n-values |   3049 | :datatype | :string           | :n-valid            |             10000 |          |       |      |       |
+| :min      | 0.0      | :n-missing | 0                               | :col-name  | sales | :mean   | 1.2813000000000099                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | :datatype | :int16 | :skew     | 29.29422301899346 | :standard-deviation | 5.802528521577941 | :n-valid | 10000 | :max | 360.0 |
+| :col-name | state_id | :mode      | CA                              | :n-missing |     0 | :values | (CA)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | :n-values |      1 | :datatype | :string           | :n-valid            |             10000 |          |       |      |       |
+| :col-name | store_id | :mode      | CA_1                            | :n-missing |     0 | :values | (CA_1 CA_2 CA_3 CA_4)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | :n-values |      4 | :datatype | :string           | :n-valid            |             10000 |          |       |      |       |
+
+#+begin_src clojure
+(ds/column-names m5-data)
+#+end_src
+
+#+RESULTS:
+| id | item_id | dept_id | cat_id | store_id | state_id | day | sales |
+
+#+begin_src clojure
+(ds/select-columns m5-data ["state_id"])
+#+end_src
+
+#+begin_src clojure
+(ds/filter-column #{"CA"} "state_id" m5-data)
+#+end_src
+
+#+BEGIN_SRC clojure
+(ds/group-by-column "state_id" m5-data)
+#+END_SRC
