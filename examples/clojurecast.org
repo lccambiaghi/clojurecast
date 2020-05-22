@@ -1,0 +1,62 @@
+* Require
+#+BEGIN_SRC clojure
+(ns clojurecast.core.forecast
+  (:require [clojure.string :as str]
+            [techtest.api :as api]
+            [tech.ml.dataset.column :as col]
+            [tech.v2.datatype.functional :as dfn]
+            [tech.v2.datatype :as dtype]
+            [tech.v2.datatype.datetime.operations :as dtype-dt-ops]
+            [tech.v2.datatype.datetime :as dtype-dt]
+            [tech.ml.dataset :as ds]
+            [clojisr.v1.r :refer [r r+ ->code r->clj clj->r discard-all-sessions]]
+            [clojisr.v1.require :refer [require-r]]
+            [clojisr.v1.applications.plotting :refer [plot->file]]
+            ))
+#+END_SRC
+
+#+RESULTS:
+
+* Load data and subset it
+The dataset can be downloaded from: https://www.kaggle.com/c/m5-forecasting-accuracy/data
+#+BEGIN_SRC clojure
+(defonce m5-data (ds/->dataset "resources/sales.csv"))
+#+END_SRC
+
+#+RESULTS:
+: #'clojurecast.core.forecast/m5-data
+
+#+BEGIN_SRC clojure
+(defn get-m5-subset
+  "Subset the m5 dataset to only include the first 1000 items and only the last 100 days"
+  [ds]
+  (let [d-cols (filter #(str/starts-with? % "d_") (ds/column-names ds))
+        old-d-cols (drop-last 100 d-cols)]
+    (->> (ds/drop-columns ds old-d-cols)
+         (ds/head 1000)))
+  )
+#+END_SRC
+
+#+RESULTS:
+: #'clojurecast.core.forecast/get-m5-subset
+
+#+begin_src clojure
+(get-m5-subset m5-data)
+#+end_src
+
+* Bring data in tidy format
+#+BEGIN_SRC clojure
+(defonce ds-tidy
+  (-> (get-m5-subset m5-data)
+      (api/pivot->longer #(str/starts-with? % "d_"){:target-cols       "day"
+                                                    :value-column-name "sales"})))
+#+END_SRC
+
+#+RESULTS:
+: #'clojurecast.core.forecast/ds-tidy
+
+* Build tsibble
+Similarly to what ~panthera~ does with ~lipython-clj~, let us define all the functions used for interacting with ~clojisr~ into their own namespace.
+#+BEGIN_SRC clojure
+(ds/head ds-tidy)
+#+END_SRC

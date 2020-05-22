@@ -1,9 +1,8 @@
 {:aliases {:dev {:extra-deps {
-                              scicloj/clojisr {:mvn/version "1.0.0-BETA11-SNAPSHOT"}
-                              techascent/tech.ml.dataset {:mvn/version "2.0-beta-44"}
-                              techascent/tech.datatype {:mvn/version "5.0-beta-30"}
+                              scicloj/clojisr {:mvn/version "RELEASE"}
+                              techascent/tech.ml.dataset {:mvn/version "RELEASE"}
+                              techascent/tech.datatype {:mvn/version "RELEASE"}
                               genmeblog/techtest {:local/root "../techtest/"}
                               ;; genmeblog/techtest {:git/url "https://github.com/genmeblog/techtest", :sha "16c5b56f0b87814300d862f768c8742badb88d6f"}
                               }
-                 :jvm-opts ["-Xmx8192m"]
                  }}}

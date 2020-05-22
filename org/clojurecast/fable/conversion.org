@@ -1,0 +1,57 @@
+* Namespace definitions :noexport:
+#+BEGIN_SRC clojure :tangle ../../../src/clojurecast/fable/conversion.clj :mkdirp yes :noweb yes
+(ns clojurecast.fable.conversion
+  (:require [clojisr.v1.r :refer [r r+ ->code r->clj clj->r discard-all-sessions]]
+            [clojisr.v1.require :refer [require-r]]
+            [clojisr.v1.applications.plotting :refer [plot->file]]
+            [tech.ml.dataset :as ds]))
+
+(require-r '[fable]
+           '[tsibble]
+           '[fabletools]
+           '[dplyr])
+
+<<ds->tsibble>>
+#+END_SRC
+
+#+RESULTS:
+: #'clojurecast.fable.conversion/ds->tsibble
+
+#+begin_src clojure :tangle ../../../test/clojurecast/fable/conversion_test.clj :mkdirp yes :noweb yes
+(ns clojurecast.fable.conversion-test
+  (:require [clojure.test :refer :all]
+            [tech.ml.dataset :as ds]
+            [clojurecast.fable.conversion :refer [ds->tsibble]])
+  (:import clojisr.v1.robject.RObject)
+  )
+
+<<test-ds->tsibble>>
+#+end_src
+
+#+RESULTS:
+: #'clojurecast.fable.conversion-test/ds-is-converted
+
+* Convert dataset to tsibble
+#+NAME: ds->tsibble
+#+BEGIN_SRC clojure
+(defn ds->tsibble
+  [ds {:keys [index key]}]
+  (r.tsibble/as-tsibble ds :index index :key key)
+  )
+#+END_SRC
+
+#+RESULTS: ds->tsibble
+: #'clojurecast.fable.conversion/ds->tsibble
+
+#+NAME: test-ds->tsibble
+#+begin_src clojure
+(deftest ds-is-converted
+  (let [ds (ds/name-values-seq->dataset {:time [1 2 3 4 5]
+                                         :id ["a" "a" "a" "a" "a"]
+                                         :value [10 10 10 10 10]})
+        tsibble (ds->tsibble ds {:index :time, :key :id})]
+    (is (= clojisr.v1.robject.RObject (class tsibble)))))
+#+end_src
+
+#+RESULTS: test-ds->tsibble
+: #'clojurecast.fable.conversion-test/ds-is-converted
