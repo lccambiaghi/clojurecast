@@ -1,13 +1,17 @@
 (ns clojurecast.fable.conversion-test
   (:require [clojure.test :refer :all]
-            [tech.ml.dataset :as ds]
-            [clojurecast.fable.conversion :refer [ds->tsibble]])
-  (:import clojisr.v1.robject.RObject)
-  )
+            [clojurecast.fable.conversion :refer :all]
+            [clojisr.v1.r :refer [r r->clj clj->r]]
+            [tech.v2.datatype.datetime :as dtype-dt]
+            [tech.v2.datatype :as dtype]
+            [tech.v2.datatype.datetime.operations :as dtype-dt-ops]
+            [tech.ml.dataset :as ds]))
 
-(deftest ds-is-converted
-  (let [ds (ds/name-values-seq->dataset {:time [1 2 3 4 5]
-                                         :id ["a" "a" "a" "a" "a"]
-                                         :value [10 10 10 10 10]})
-        tsibble (ds->tsibble ds {:index :time, :key :id})]
-    (is (= clojisr.v1.robject.RObject (class tsibble)))))
+(def ds (ds/name-values-seq->dataset {"time" (dtype-dt-ops/plus-days (dtype-dt/instant) (range 5))
+                                      "id"(repeat 5 "a")
+                                      "value" (repeat 5 10)}))
+
+(deftest convert-ds-dt-to-tsibble
+  (let [robj (ds->tsibble mapseq-ds-dt {:index "time", :keys "id"})]
+    (is (is-robj-tsibble? robj))
+    (is (is-tsibble-col-date? robj "time"))))

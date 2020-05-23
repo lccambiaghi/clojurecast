@@ -1,57 +1,92 @@
-* Namespace definitions :noexport:
-#+BEGIN_SRC clojure :tangle ../../../src/clojurecast/fable/conversion.clj :mkdirp yes :noweb yes
+* Convert dataset to tsibble
+Currently ~clojisr~ does not support conversion when the column of a ~tech.ml.dataset~ is of ~tech.datatype~ :packed-instant.
+We circumvent this by converting it to days-since-epoch and converting them on the R side with ~lubridate~.
+
+Until this is implemented upstream, we require datasets to have their index column of :packed-instant type. I also found out that having column names as strings (rather than keywords) make the conversion a bit easier.
+
+#+BEGIN_SRC clojure :tangle ../../../src/clojurecast/fable/conversion.clj :mkdirp yes
 (ns clojurecast.fable.conversion
-  (:require [clojisr.v1.r :refer [r r+ ->code r->clj clj->r discard-all-sessions]]
+  (:require [clojisr.v1.r :refer [r r->clj]]
             [clojisr.v1.require :refer [require-r]]
-            [clojisr.v1.applications.plotting :refer [plot->file]]
+            [tech.v2.datatype.datetime :as dtype-dt]
+            [tech.v2.datatype :as dtype]
+            [tech.v2.datatype.datetime.operations :as dtype-dt-ops]
             [tech.ml.dataset :as ds]))
 
-(require-r '[fable]
-           '[tsibble]
-           '[fabletools]
+(require-r '[tsibble]
+           '[lubridate]
            '[dplyr])
 
-<<ds->tsibble>>
+(defn- is-packed-instant? [col]
+  (= :packed-instant (dtype/get-datatype col)))
+
+(defn- instant->seconds [ds col]
+  (if (is-packed-instant? (ds col))
+    (ds/update-column ds col #(dtype-dt-ops/get-epoch-days %))
+    ds))
+
+(defn is-robj-tsibble? [robj]
+  (= (-> (r.base/class robj)
+         (r->clj)
+         (first))
+     "tbl_ts"))
+
+(defn is-tsibble-col-date? [tsibble col]
+  (= (-> (r.base/$ tsibble col)
+         (r.base/class)
+         (r->clj)
+         (first))
+     "Date"))
+
+(defn ds->tsibble
+  "
+  `:ds` must be a dataset
+  `:index` is a column of instant type a string denoting the time column
+  `:keys` is a string or a list of strings to identify the unique time series
+   "
+  [ds {:keys [index keys]}]
+  (-> (instant->seconds ds index)
+      (r.tsibble/as-tsibble :index index :key keys)
+      (r.dplyr/mutate (keyword index) `(r.lubridate/as_date ~(symbol index)))))
+
 #+END_SRC
 
 #+RESULTS:
-: #'clojurecast.fable.conversion/ds->tsibble
+| #'clojurecast.fable.conversion/is-packed-instant?   |
+| #'clojurecast.fable.conversion/instant->seconds     |
+| #'clojurecast.fable.conversion/is-robj-tsibble?     |
+| #'clojurecast.fable.conversion/is-tsibble-col-date? |
+| #'clojurecast.fable.conversion/ds->tsibble          |
 
-#+begin_src clojure :tangle ../../../test/clojurecast/fable/conversion_test.clj :mkdirp yes :noweb yes
+* Test
+#+begin_src clojure :tangle ../../../test/clojurecast/fable/conversion_test.clj :mkdirp yes
 (ns clojurecast.fable.conversion-test
   (:require [clojure.test :refer :all]
-            [tech.ml.dataset :as ds]
-            [clojurecast.fable.conversion :refer [ds->tsibble]])
-  (:import clojisr.v1.robject.RObject)
-  )
+            [clojurecast.fable.conversion :refer :all]
+            [clojisr.v1.r :refer [r r->clj clj->r]]
+            [tech.v2.datatype.datetime :as dtype-dt]
+            [tech.v2.datatype :as dtype]
+            [tech.v2.datatype.datetime.operations :as dtype-dt-ops]
+            [tech.ml.dataset :as ds]))
 
-<<test-ds->tsibble>>
+(def ds (ds/name-values-seq->dataset {"time" (dtype-dt-ops/plus-days (dtype-dt/instant) (range 5))
+                                      "id"(repeat 5 "a")
+                                      "value" (repeat 5 10)}))
+
+(deftest convert-ds-to-tsibble
+  (let [robj (ds->tsibble mapseq-ds-dt {:index "time", :keys "id"})]
+    (is (is-robj-tsibble? robj))
+    (is (is-tsibble-col-date? robj "time"))))
 #+end_src
 
 #+RESULTS:
-: #'clojurecast.fable.conversion-test/ds-is-converted
-
-* Convert dataset to tsibble
-#+NAME: ds->tsibble
-#+BEGIN_SRC clojure
-(defn ds->tsibble
-  [ds {:keys [index key]}]
-  (r.tsibble/as-tsibble ds :index index :key key)
-  )
-#+END_SRC
-
-#+RESULTS: ds->tsibble
-: #'clojurecast.fable.conversion/ds->tsibble
-
-#+NAME: test-ds->tsibble
-#+begin_src clojure
-(deftest ds-is-converted
-  (let [ds (ds/name-values-seq->dataset {:time [1 2 3 4 5]
-                                         :id ["a" "a" "a" "a" "a"]
-                                         :value [10 10 10 10 10]})
-        tsibble (ds->tsibble ds {:index :time, :key :id})]
-    (is (= clojisr.v1.robject.RObject (class tsibble)))))
-#+end_src
+| #'clojurecast.fable.conversion-test/ds                    |
+| #'clojurecast.fable.conversion-test/convert-ds-to-tsibble |
 
 #+RESULTS: test-ds->tsibble
 : #'clojurecast.fable.conversion-test/ds-is-converted
+
+* Further reading
+Lubridate cheatshet: https://rawgit.com/rstudio/cheatsheets/master/lubridate.pdf
+A datetime is the number of seconds since 1970
+A date is a day stored as the number of days since 1970-01-01

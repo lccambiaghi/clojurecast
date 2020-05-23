@@ -92,73 +92,52 @@ Or a sequence of vectors:
 * Datetime
 ** Instant, ZonedDateTime, ms-since-epoch
 #+begin_src clojure
+(let [ds (ds/->dataset [{:dt (java.time.LocalDate/parse "2002-11-22")}
+                        {:dt (java.time.LocalDate/parse "2012-11-22")}])]
+  (ds :dt))
+#+end_src
+
+#+begin_src clojure
 (def inst (dtype-dt/instant))
 inst
 #+end_src
 
 #+RESULTS:
-| #'clojurecast.core.forecast/inst                                 |
-| #object[java.time.Instant 0x39f54a27 "2020-05-16T22:44:10.960Z"] |
+| #'cl(def mapseq-ds (ds/name-values-seq->dataset {:time [1 2 3 4 5]
+                                             :id (repeat 5 "a")
+                                             :value (repeat 5 10)}))
 
-#+begin_src clojure
-(dtype-dt/instant->zoned-date-time inst)
-#+end_src
+                                        ; conversion in seconds-since-epoch
+(def mapseq-ds-dt (ds/name-values-seq->dataset {:time (->> (dtype-dt-ops/plus-days (dtype-dt/local-date) (range 5))
+                                                           (map #(/ (dtype-dt/local-date->milliseconds-since-epoch %) 1000)))
+                                                :id (repeat 5 "a")
+                                                :value (repeat 5 10)}))
 
-#+RESULTS:
-: #object[java.time.ZonedDateTime 0x19aa1feb "2020-05-17T00:44:10.960+02:00[Europe/Copenhagen]"]
+(def mapseq-ds-dt (ds/name-values-seq->dataset {:time (->> (dtype-dt-ops/plus-days (dtype-dt/local-date) (range 5))
+                                                           (map #(/ (dtype-dt/local-date->milliseconds-since-epoch %) 1000))
 
-#+begin_src clojure
-(-> (dtype-dt/instant->zoned-date-time inst)
-          (dtype-dt/zoned-date-time->milliseconds-since-epoch))
-#+end_src
+(defn is-tsibble-class? [ds]
+  (= (-> (ds->tsibble ds {:index :time, :key :id})
+         (r.base/class)
+         (r->clj)
+         (first))
+     "tbl_ts"))
 
-#+RESULTS:
-: 1589669050960
+(defn has-datetime-index? [ds]
+  (-> (ds->tsibble mapseq-ds-dt {:index :time, :key :id})
+      (r.dplyr/mutate :time '(r.lubridate/as_datetime time))
+      ;; (r.base/as-date)
+      ;; (r.base/typeof)
+      )
+  )
 
-#+begin_src clojure
-(dtype-dt/instant->zoned-date-time inst (dtype-dt/utc-zone-id))
-#+end_src
+(deftest convert-ds-to-tsibble
+  (is (is-tsibble-class? mapseq-ds))
+  (is (is-tsibble-class? mapseq-ds-dt))
+  )
 
-#+RESULTS:
-: #object[java.time.ZonedDateTime 0x29ee65bd "2020-05-16T22:44:10.960Z[UTC]"]
-
-** get-dt-field
-#+BEGIN_SRC clojure
-(dtype-dt-ops/print-field-compatibility-matrix)
-#+END_SRC
-
-#+RESULTS:
-
-#+begin_src clojure
-(-> (dtype-dt/instant->zoned-date-time inst)
-    (dtype-dt-ops/get-iso-week-of-year))
-#+end_src
-** Plus minus time
-#+BEGIN_SRC clojure
-(dtype-dt-ops/print-plus-op-compatibility-matrix)
-#+END_SRC
-
-#+RESULTS:
-
-#+begin_src clojure
-(dtype-dt-ops/plus-weeks (dtype-dt/local-date) (range 5))
-#+end_src
-
-* Data exploration
-Let's load the data and reshape it in long format:
-#+BEGIN_SRC clojure
-(defonce m5-data-full (ds/->dataset "resources/sales.csv"))
-#+END_SRC
-
-#+RESULTS:
-: #'clojurecast.core.forecast/m5-data-full
-
-#+begin_src clojure
-(dtype/shape m5-data-full)
-#+end_src
-
-#+RESULTS:
-| 1919 | 30490 |
+()
+ 30490 |
 
 Since we deal with a fairly big dataset, let's operate on a sample:
 #+begin_src clojure
@@ -230,9 +209,6 @@ We can bring the dataset in long format with:
 (dtype/shape m5-data-long)
 #+END_SRC
 
-#+RESULTS:
-| 8 | 52000 |
-
 #+begin_src clojure
 (ds/select-columns m5-data-long ["state_id"])
 #+end_src
@@ -245,39 +221,6 @@ We can filter values in a dataset by applying a function to each row of the data
 #+begin_src clojure
 (dst/select-rows m5-data-long (fn [row] (> (get row "sales") 20)))
 #+end_src
-
-#+RESULTS:
-#+begin_example
-resources/sales.csv [155 8]:
-
-|                              id |         item_id |     dept_id |    cat_id | store_id | state_id |    day | sales |
-|---------------------------------+-----------------+-------------+-----------+----------+----------+--------+-------|
-|   HOBBIES_1_189_CA_1_validation |   HOBBIES_1_189 |   HOBBIES_1 |   HOBBIES |     CA_1 |       CA | d_1912 |    22 |
-|   HOBBIES_1_244_CA_1_validation |   HOBBIES_1_244 |   HOBBIES_1 |   HOBBIES |     CA_1 |       CA | d_1912 |    23 |
-| HOUSEHOLD_1_334_CA_1_validation | HOUSEHOLD_1_334 | HOUSEHOLD_1 | HOUSEHOLD |     CA_1 |       CA | d_1898 |    35 |
-| HOUSEHOLD_1_414_CA_1_validation | HOUSEHOLD_1_414 | HOUSEHOLD_1 | HOUSEHOLD |     CA_1 |       CA | d_1898 |    31 |
-|   HOBBIES_1_288_CA_1_validation |   HOBBIES_1_288 |   HOBBIES_1 |   HOBBIES |     CA_1 |       CA | d_1908 |    28 |
-| HOUSEHOLD_1_032_CA_1_validation | HOUSEHOLD_1_032 | HOUSEHOLD_1 | HOUSEHOLD |     CA_1 |       CA | d_1899 |    21 |
-| HOUSEHOLD_1_096_CA_1_validation | HOUSEHOLD_1_096 | HOUSEHOLD_1 | HOUSEHOLD |     CA_1 |       CA | d_1899 |    21 |
-| HOUSEHOLD_1_118_CA_1_validation | HOUSEHOLD_1_118 | HOUSEHOLD_1 | HOUSEHOLD |     CA_1 |       CA | d_1899 |    28 |
-| HOUSEHOLD_1_191_CA_1_validation | HOUSEHOLD_1_191 | HOUSEHOLD_1 | HOUSEHOLD |     CA_1 |       CA | d_1899 |    23 |
-| HOUSEHOLD_1_414_CA_1_validation | HOUSEHOLD_1_414 | HOUSEHOLD_1 | HOUSEHOLD |     CA_1 |       CA | d_1899 |    21 |
-|   HOBBIES_1_008_CA_1_validation |   HOBBIES_1_008 |   HOBBIES_1 |   HOBBIES |     CA_1 |       CA | d_1896 |    26 |
-|   HOBBIES_1_268_CA_1_validation |   HOBBIES_1_268 |   HOBBIES_1 |   HOBBIES |     CA_1 |       CA | d_1882 |    46 |
-|   HOBBIES_1_288_CA_1_validation |   HOBBIES_1_288 |   HOBBIES_1 |   HOBBIES |     CA_1 |       CA | d_1882 |    29 |
-|   HOBBIES_1_295_CA_1_validation |   HOBBIES_1_295 |   HOBBIES_1 |   HOBBIES |     CA_1 |       CA | d_1882 |    21 |
-|   HOBBIES_1_169_CA_1_validation |   HOBBIES_1_169 |   HOBBIES_1 |   HOBBIES |     CA_1 |       CA | d_1869 |    37 |
-|   HOBBIES_1_268_CA_1_validation |   HOBBIES_1_268 |   HOBBIES_1 |   HOBBIES |     CA_1 |       CA | d_1869 |    42 |
-|   HOBBIES_1_008_CA_1_validation |   HOBBIES_1_008 |   HOBBIES_1 |   HOBBIES |     CA_1 |       CA | d_1891 |    38 |
-|   HOBBIES_1_048_CA_1_validation |   HOBBIES_1_048 |   HOBBIES_1 |   HOBBIES |     CA_1 |       CA | d_1891 |    26 |
-|   HOBBIES_1_348_CA_1_validation |   HOBBIES_1_348 |   HOBBIES_1 |   HOBBIES |     CA_1 |       CA | d_1891 |    21 |
-| HOUSEHOLD_1_334_CA_1_validation | HOUSEHOLD_1_334 | HOUSEHOLD_1 | HOUSEHOLD |     CA_1 |       CA | d_1891 |    28 |
-| HOUSEHOLD_1_418_CA_1_validation | HOUSEHOLD_1_418 | HOUSEHOLD_1 | HOUSEHOLD |     CA_1 |       CA | d_1891 |    27 |
-|   HOBBIES_1_019_CA_1_validation |   HOBBIES_1_019 |   HOBBIES_1 |   HOBBIES |     CA_1 |       CA | d_1905 |    31 |
-|   HOBBIES_1_090_CA_1_validation |   HOBBIES_1_090 |   HOBBIES_1 |   HOBBIES |     CA_1 |       CA | d_1905 |    26 |
-|   HOBBIES_1_189_CA_1_validation |   HOBBIES_1_189 |   HOBBIES_1 |   HOBBIES |     CA_1 |       CA | d_1905 |    22 |
-|   HOBBIES_1_369_CA_1_validation |   HOBBIES_1_369 |   HOBBIES_1 |   HOBBIES |     CA_1 |       CA | d_1905 |    49 |
-#+end_example
 
 #+begin_src clojure
 (dst/order-by m5-data-long "sales" :desc)
